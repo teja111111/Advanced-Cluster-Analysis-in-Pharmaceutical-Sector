@@ -1,0 +1,262 @@
+---
+title: "Tejesh_Varma_Maddana_FML_Assignment_4"
+author: "Tejesh Varma Maddana"
+date: "2023-11-07"
+output:
+  word_document: default
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+#Loading the required packages for analyzing the problem statement
+
+```{r}
+rm(list = ls()) #cleaning the environment
+library(readr)
+library(cluster)
+library(tidyr)
+library(caret)
+library(ggplot2)
+library(tidyverse)
+library(pander)
+library(caret)
+library(knitr)
+library(class)  
+library(reshape2)
+library(kernlab)
+library(ggcorrplot)
+library(dplyr)
+library(e1071)
+library(factoextra)
+library(flexclust)
+library(cowplot)
+```
+
+#Importing the data from the problem statement
+
+```{r}
+P <- read.csv("~/Documents/KSU/Fundamentals of Machine Learning - 64060/Assignments/4. Assignment_4/Pharmaceuticals.csv")
+head(P)
+```
+
+#Understand the bank data structure:- Display the structure of dataset by using the function "str()" so as to know about different data type, dimensions, and the elements in dataset.
+
+```{r}
+str(P)
+#From the Structure we know that there are 21 obs. of  14 variables
+```
+
+#Using the "is.na()" function for checking the missing or not available values in the provided dataset.
+
+```{r}
+colMeans(is.na(P))
+```
+
+#Since the result in all the columns indicated zero, it indicates there are no missing values in the provided dataset
+
+**Problem Statement - 1.Use only the numerical variables (1 to 9) to cluster the 21 firms. Justify the various choices made in conducting the cluster analysis, such as weights for different variables, the specific clustering algorithm(s) used, the number of clusters formed, and so on.**
+
+#Using the numerical variables from 1 to 9 to cluster the 21 firms.
+
+```{r}
+P2 <- P[,c(1,3:11)]
+```
+
+#Assigning the rownames to the each firm
+
+```{r}
+row.names(P2) <- P2[,1]
+```
+
+#Deleting the symbol column from the P2 dataframe
+
+```{r}
+P2 <- P2[,-1]
+head(P2)
+```
+
+#Displaying the structure of dataframe P2
+
+```{r}
+str(P2) 
+```
+
+#Dropped the columns of 'Name', 'Median_Recommendation', 'Location', 'Exchange'
+
+#By using the scale function, Normalizing the data
+
+```{r}
+set.seed(44)
+P_Norm <- scale(P2)
+#normalizing the data by subtracting the mean of the data and dividing by the standard deviation
+pandoc.table(head(P_Norm),style="grid", split.tables = Inf) 
+# Displaying the top 6 Observation from pharma_Norm
+```
+
+#Clustering the data by using euclidean distance and plotting the graph to interpret the results #By using the Euclidean distance formula 
+
+$$Distance = \sqrt{(x_2 - x_1)^2+(y_2-y_1)^2)}$$
+
+```{r}
+#Finding the distances between observations in the data by using the above Euclidean distance formula
+P_d <- get_dist(P_Norm) 
+
+#Considering the distance matrix P_d as its main argument, visualizing the distances by using the 'fviz_dist()' function which displays the heat-map.
+
+fviz_dist(P_d, order = TRUE, show_labels = TRUE) 
+countries <- P[,c(1,2)] 
+unique(countries)
+```
+
+***Colour intensity varies with increasing and decreasing distance. The heat-map below shows the separation between two Pharma companies observations. The red diagonals have a value of zero, and the dark blue diagonals have a value of six, indicating their extreme separation from one another.***
+
+#Determine whether the variables selected for clustering have any correlation with one another.
+
+```{r}
+corr<-cor(P_Norm)
+ggcorrplot(corr,outline.color = "red",lab = TRUE,hc.order = TRUE,type = "full")
+
+#The Market capitalization (market_cap), profit margin, and Return on equity (ROE) all have a significant positive correlation with return on assets (ROA). Accordingly, it is expected that the values of Market_cap, Profit Margin, and ROE will rise along with the value of ROA, and vice versa.
+```
+
+***Problem Statement-2:- Interpret the clusters with respect to the numerical variables used in forming the clusters. Is there a pattern in the clusters with respect to the numerical variables (10 to 12)?***
+
+#Finding the number of cluster's for grouping similar countries together. 
+
+#There are two main methods to find the value of K or number of cluster: Elbow chart and the Silhouette Method
+
+#Determining the best value for k using an elbow chart Methods
+```{r}
+Elbow_method <- fviz_nbclust(P_Norm, kmeans, method = "wss")+ggtitle("Elbow Method")
+
+#Determining the best value for k using the Silhouette Method
+
+Silhouette_method <- fviz_nbclust(P_Norm, kmeans, method = "silhouette")+ggtitle("Silhoette Method")
+plot_grid(Elbow_method, Silhouette_method, nrow = 1)
+```
+
+#As the silhouette approach indicates k=5, and the elbow method indicates k = 2 or 6, we are attempting to determine the ideal value of k. will examine every number between 2 and 6 and considering number of restarts = 25
+
+```{r}
+k_2<-kmeans(P_Norm,centers =2,nstart=25)
+k_3<-kmeans(P_Norm,centers =3,nstart=25)
+k_4<-kmeans(P_Norm,centers =4,nstart=25)
+k_5<-kmeans(P_Norm,centers =5,nstart=25)
+k_6<-kmeans(P_Norm,centers =6,nstart=25)
+p_1<-fviz_cluster(k_2,geom = "point", data=P_Norm)+ggtitle("k=2")
+p_2<-fviz_cluster(k_3,geom = "point", data=P_Norm)+ggtitle("k=3")
+p_3<-fviz_cluster(k_4,geom = "point", data=P_Norm)+ggtitle("k=4")
+p_4<-fviz_cluster(k_5,geom = "point", data=P_Norm)+ggtitle("k=5")
+p_5<-fviz_cluster(k_6,geom = "point", data=P_Norm)+ggtitle("k=6")
+library(gridExtra)
+grid.arrange(p_1,p_2,p_3,p_4,p_5)#The value 5 has no overlap and also creating 5 different clusters
+```
+
+#Since value of K = 5 is making more sense will create 5 clusters for our analysis
+
+```{r}
+P_Kmeans <- kmeans(P_Norm, centers = 5, nstart = 25)
+pandoc.table(P_Kmeans$centers,style="grid", split.tables = Inf)
+P_Kmeans$size
+P_Kmeans$withinss
+P_Kmeans$cluster[16]
+paste("The 16th Observation is country NVS and belongs to cluster", P_Kmeans$cluster[16])
+fviz_cluster(P_Kmeans, data = P_Norm)
+
+#By analyzing the findings, there are five clusters based on the entire data. While "cluster 2" has just two countries, "cluster 3" has the greatest number of firms.Moreover, Cluster 5 exhibits strong ROA and ROE asset turnover, while Cluster 2 displays a high PE ratio.Data dispersion is revealed by the cluster sum of square distance, cluster 2 (2.8) is less homogeneous than cluster 1 (21.9).
+```
+
+#Additionally, Kcca is being used to obtain the clusters rather than Kmeans because Kmeans uses the mean and KCCA utilises the KMedian. 
+
+```{r}
+#using k-means with k=3 for making clusters
+set.seed(180)
+P_KCCA_3 <- kcca(P_Norm, k = 5, kccaFamily("kmedians"))
+P_KCCA_3
+
+#Apply predict function
+
+clusters_index <- predict(P_KCCA_3)
+dist(P_KCCA_3@centers)
+image(P_KCCA_3)
+points(P_Norm, col = clusters_index, pch = 22, cex = 1)
+
+#K-means clustering and KCCA have been used to solve the problem. While K-means clustering divides a set of data points into K clusters, KCCA is used to determine the correlation between two sets of variables. Furthermore, K-means clustering is an unsupervised learning technique that doesn't require any labelled data, whereas KCCA is a supervised learning method that does.
+```
+
+#Will Continue with cluster created by Kmeans since its more accurate for unsupervised learning method
+
+```{r }
+#Plot of data grouped in clusters
+Centroid_1 <- data.frame(P_Kmeans$centers) %>% rowid_to_column() %>% gather('Columns', 'Centers', -1)
+print(Centroid_1)
+ggplot(Centroid_1, aes(x = Columns, y = Centers, color = as.factor(rowid))) + geom_line(aes(group = as.factor(rowid))) + geom_point() 
+
+#The graph demonstrates that companies in cluster.1 have a high price to earnings ratio and a low net profit margin, whereas companies in cluster 3 have a high leverage ratio, a low return on asset (ROA), and a low asset turnover rate. However, Cluster 2 did not stand out in relation to any of the factors we looked at.
+
+```
+
+#Checking if there is any pattern in the clusters with respect to the numerical variables (10 to 12)? 
+
+```{r}
+P_Pattern <-  P %>% select(c(12,13,14)) %>% mutate(Cluster = P_Kmeans$cluster)
+print(P_Pattern) #The remaining three category to be considered are Stock Exchange, Location, and Median Recommendation.
+```
+
+#Using the bar charts to visualise the distribution of firms organised by clusters and to spot any data trends.
+
+```{r}
+Median_Recom <- ggplot(P_Pattern, mapping = aes(factor(Cluster), fill=Median_Recommendation)) +
+  geom_bar(position = 'dodge') + labs(x='Clusters', y='Frequence')
+
+Location_0 <- ggplot(P_Pattern, mapping = aes(factor(Cluster), fill=Location)) + geom_bar(position = 'dodge') + labs(x='Clusters', y='Frequence')
+
+Exchange_0 <- ggplot(P_Pattern, mapping = aes(factor(Cluster), fill=Exchange)) +
+geom_bar(position = 'dodge') + labs(x='Clusters', y='Frequence')
+plot_grid(Median_Recom, Location_0, Exchange_0)
+```
+
+#According to the clustering analysis, the firms in each cluster share comparable attributes with regard to their Exchange, Location, and Median Recommendation.
+
+**Cluster-1:-** The majority of the companies in cluster 1 are US-based firms that are listed on the New York Stock Exchange. Their stock has a broad recommendation to hold, indicating that they are dependable and generally low-risk investments.
+
+**Cluster -2:-** The companies in cluster 2 are a combination of US and Canadian firms listed on the NYSE, are recommended to be bought or held because they have the potential for growth but may also carry some risk.
+
+**Cluster-3:-** The companies in cluster 3 are listed on the NYSE and come from different places, have a modest buy or sell recommendation, indicating that there may be room for growth.
+
+**Cluster-4:-** Companies in cluster 4 are based in the USA and Germany and are listed on stock exchanges other than NYSE (AMEX and NASDAQ), are recommended for a hold or modest purchase.
+
+**Cluster-5:-** Companies in cluster 5 includes companies from the UK and the USA, have partially hold and buy recommendations for their NYSE-listed stocks, suggesting that they may have some growth potential but also considerable risk.
+
+***problem statement -3 :- Provide an appropriate name for each cluster using any or all of the variables in the dataset.***
+
+21 pharmaceutical firms can be divided into 5 groups based on the characteristics of the clusters and the detailed analysis as done.
+     
+**Cluster 1: "Stable - efficient companies":-** Businesses with normal levels for all financial parameters are thought to be running effectively and efficiently in their sector and against competitors. Additionally, American-based businesses that are listed on the New York shares Exchange dominate it. These businesses have a spread advise to hold onto their shares, implying that they are reliable and reasonably low-risk investments. Cluster 1 is characterized by high market capital, high ROE, high ROA, and high asset turnover.
+
+**Cluster 2: "Overpriced - Risky companies":-** Despite the company's relatively low net profit margin, the market is valuing its shares at a premium to its present earnings due to its high price-to-earnings (PE) ratio and low net profit margin. It indicates that, despite the company's low profit margin relative to revenue, investors are prepared to pay a premium for each dollar of earnings the company makes.These businesses carry some risk since their stock price can drop in the future if they are unable to live up to the expectations of the market.
+
+**Cluster 3: "Growth oriented- Low risky companies":-** A business that exhibits strong revenue growth along with low asset turnover may be a sign of substantial growth potential that isn't being realized at this time due to inefficient operations. Investors ought to take into account the industry and competitive environment of the business in addition to its capacity to maintain rapid revenue growth in the long run. It's also critical to assess the profitability of the business, since even with strong sales growth, profits may not increase if the company is not making the most use of its resources.Additionally, these are the companies from different regions that are listed on the New York Stock Exchange (NYSE), and their moderate buy or sell recommendation implies that they might have room for growth. Finally, Cluster 3 is characterized by similar beta values, high price/earnings ratio, and low ROE ROA, net profit margin.
+
+**Cluster 4- "Debt-ridden - very risky companies":-** High leverage and low ROA and net profit margin may be signs that a company is borrowing a lot of money to fund its operations while producing insufficient profits or returns on assets. Investors may find this to be a worrying indication because it could be difficult for the business to pay off its debt and eventually get into financial difficulties.Additionally, they are recommended for holds or moderate buys on stock exchange marketplaces other than the New York Stock Exchange (AMEX and NASDAQ). Finally, Cluster 4 is characterized by below average ROE, ROA, and asset turnover with high estimated revenue growth.
+
+**Cluster 5- "Established - profitable companies":-** Large, well-established businesses with a good financial position and a substantial market presence are usually those with a high market capitalization. A corporation with a high market capitalization has many outstanding shares and a high stock price, which contributes to a high value.Additionally, they have a buy and partially hold rating on the NYSE-listed equities they own.
+
+**In a simple, i can state that**
+
+**#Cluster 1: Hold cluster -They have decent numbers.**
+
+**#Cluster 2: Moderate Buy (or) Hold cluster.**
+
+**#Cluster 3: Buy or Sell Cluster**
+
+**#Cluster 4: Buy Cluster - It has good stability.**
+
+**#Cluster 5: High Hold cluster**
+
+
+
